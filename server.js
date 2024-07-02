@@ -3,40 +3,43 @@ const axios = require('axios');
 const app = express();
 const port = process.env.PORT || 3000;
 
-const IPAPI_URL = 'http://ipapi.co';
-const OPENWEATHERMAP_URL = 'http://api.openweathermap.org/data/2.5/weather';
-const OPENWEATHERMAP_API_KEY = '8b92add9cde4429880472111240107&q'; // Replace with your OpenWeatherMap API key
+// Function to get the real IP address
+const getClientIp = (req) => {
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    if (clientIp === '::1' || clientIp === '127.0.0.1' || clientIp === '::ffff:127.0.0.1') {
+        return '8.8.8.8'; // Use Google's public DNS IP for testing
+    }
+    return clientIp;
+};
 
 app.get('/api/hello', async (req, res) => {
-    const visitorName = req.query.visitor_name || 'Guest';
-    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const visitorName = req.query.visitor_name;
+    const clientIp = getClientIp(req);
 
     try {
-        // Get location based on IP address
-        const locationResponse = await axios.get(`${IPAPI_URL}/${clientIp}/json`);
-        const city = locationResponse.data.city || 'Unknown city';
-        const country = locationResponse.data.country_name || 'Unknown country';
-        const location = `${city}, ${country}`; // Combining city and country for a more precise location
+        // Get location data from ipinfo.io
+        const locationResponse = await axios.get(`https://ipinfo.io/${clientIp}?token=39e93a01118816`);
+        console.log('Location data received:', locationResponse.data);
+        const locationData = locationResponse.data;
+        const city = locationData.city;
+        const region = locationData.region;
 
-        // Get weather data based on location
-        const weatherResponse = await axios.get(`${OPENWEATHERMAP_URL}`, {
-            params: {
-                q: city, // Using just the city for weather query
-                appid: OPENWEATHERMAP_API_KEY,
-                units: 'metric'
-            }
-        });
-        const temperature = weatherResponse.data.main.temp;
+        if (!city) {
+            throw new Error('City not found in location data.');
+        }
 
-        const greeting = `Hello, ${visitorName}! The temperature is ${temperature} degrees Celsius in ${location}.`;
+        // Get weather data from weatherapi.com
+        const weatherResponse = await axios.get(`http://api.weatherapi.com/v1/current.json?key=8b92add9cde4429880472111240107&q=${city}`);
+        const temperature = weatherResponse.data.current.temp_c;
+
         res.json({
             client_ip: clientIp,
-            location: location,
-            greeting: greeting
+            location: `${city}, ${region}`,
+            greeting: `Hello, ${visitorName}! The temperature is ${temperature} degrees Celsius in ${city}`
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Error occurred:', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: 'Failed to retrieve data' });
     }
 });
 
