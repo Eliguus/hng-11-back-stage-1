@@ -5,7 +5,7 @@ const port = process.env.PORT || 3000;
 
 const IPAPI_URL = 'http://ipapi.co';
 const OPENWEATHERMAP_URL = 'http://api.openweathermap.org/data/2.5/weather';
-const OPENWEATHERMAP_API_KEY = 'your_openweathermap_api_key'; // Replace with your OpenWeatherMap API key
+const OPENWEATHERMAP_API_KEY = '8b92add9cde4429880472111240107&q'; // Replace with your OpenWeatherMap API key
 
 app.get('/api/hello', async (req, res) => {
     const visitorName = req.query.visitor_name || 'Guest';
